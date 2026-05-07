@@ -14,7 +14,7 @@ const LANG_CMD      = "clarify.setLanguage";
 let dashboardPanel;
 /** @type {vscode.OutputChannel} */
 let outputChannel;
-/** @type {string} chemin absolu du dossier de l'extension */
+/** @type {string} */
 let EXT_PATH;
 
 // ── Activation ───────────────────────────────────────────────────
@@ -22,6 +22,10 @@ function activate(context) {
   EXT_PATH      = context.extensionPath;
   outputChannel = vscode.window.createOutputChannel("Clarify");
   outputChannel.appendLine(`[Clarify] Activée — ${EXT_PATH}`);
+  outputChannel.show(true);
+
+  // Notification immédiate pour confirmer l'activation
+  vscode.window.showInformationMessage("⬡ Clarify activée !");
 
   context.subscriptions.push(
     vscode.commands.registerCommand(DASHBOARD_CMD, () => openDashboard(context)),
@@ -30,7 +34,7 @@ function activate(context) {
     vscode.commands.registerCommand(LANG_CMD,      () => pickLanguage(context))
   );
 
-  // Bouton dans la barre de statut pour ouvrir le dashboard rapidement
+  // Bouton barre de statut
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.text    = "⬡ Clarify";
   statusBar.tooltip = "Ouvrir le dashboard Clarify";
@@ -38,12 +42,13 @@ function activate(context) {
   statusBar.show();
   context.subscriptions.push(statusBar);
 
-  // activate() se termine immédiatement — Python ne se lance qu'à la demande
-  outputChannel.appendLine("[Clarify] Prête — clique sur ⬡ Clarify ou Ctrl+Shift+P");
+  outputChannel.appendLine("[Clarify] Commandes enregistrées. Cliquez sur ⬡ Clarify.");
 }
 
 // ── Dashboard ────────────────────────────────────────────────────
 function openDashboard(context) {
+  outputChannel.appendLine("[Clarify] openDashboard() appelée");
+
   if (dashboardPanel) {
     dashboardPanel.reveal(vscode.ViewColumn.Two);
     refreshDashboard(context);
@@ -61,9 +66,7 @@ function openDashboard(context) {
     }
   );
 
-  // Affiche un écran de chargement immédiatement
   dashboardPanel.webview.html = loadingHtml();
-
   dashboardPanel.onDidDispose(() => { dashboardPanel = undefined; }, null, context.subscriptions);
   dashboardPanel.webview.onDidReceiveMessage(
     (msg) => handleMessage(msg, context), null, context.subscriptions
@@ -74,6 +77,7 @@ function openDashboard(context) {
 
 function refreshDashboard(context) {
   if (!dashboardPanel) return;
+  outputChannel.appendLine("[Clarify] refreshDashboard() — lancement Python...");
 
   const ep     = EXT_PATH.replace(/\\/g, "\\\\");
   const script = [
@@ -81,61 +85,52 @@ function refreshDashboard(context) {
     `sys.path.insert(0, r'${ep}')`,
     `try:`,
     `  from src.reporter.dashboard import get_webview_html`,
-    `  html = get_webview_html()`,
-    `  print(html, end='')`,
-    `except Exception as e:`,
+    `  print(get_webview_html(), end='')`,
+    `except Exception:`,
     `  print('CLARIFY_ERROR:' + traceback.format_exc(), end='')`,
   ].join("\n");
 
   runPython(["-c", script])
     .then((out) => {
       if (!dashboardPanel) return;
+      outputChannel.appendLine(`[Clarify] Python répondu — ${out.length} caractères`);
       if (out.startsWith("CLARIFY_ERROR:")) {
         const detail = out.replace("CLARIFY_ERROR:", "").trim();
-        outputChannel.appendLine(`[Clarify] Python error:\n${detail}`);
-        outputChannel.show(true);
+        outputChannel.appendLine(`[Clarify] Erreur Python:\n${detail}`);
         dashboardPanel.webview.html = errorHtml(detail);
       } else if (out.trim()) {
         dashboardPanel.webview.html = out;
       } else {
-        dashboardPanel.webview.html = errorHtml("Python n'a rien retourné.\nVérifiez l'onglet Output > Clarify.");
+        dashboardPanel.webview.html = errorHtml("Sortie Python vide.");
       }
     })
     .catch((err) => {
-      const msg = err.message || String(err);
-      outputChannel.appendLine(`[Clarify] execFile error: ${msg}`);
-      outputChannel.show(true);
-      if (dashboardPanel) dashboardPanel.webview.html = errorHtml(msg);
+      outputChannel.appendLine(`[Clarify] execFile échoué: ${err.message}`);
+      if (dashboardPanel) dashboardPanel.webview.html = errorHtml(err.message);
     });
 }
 
 // ── Messages du webview ──────────────────────────────────────────
 function handleMessage(msg, context) {
-  const extPathEsc = EXT_PATH.replace(/\\/g, "\\\\");
-  const header     = `import sys; sys.path.insert(0, r'${extPathEsc}')`;
+  const ep     = EXT_PATH.replace(/\\/g, "\\\\");
+  const header = `import sys; sys.path.insert(0, r'${ep}')`;
 
   switch (msg.type) {
     case "ready":
     case "refresh":
       refreshDashboard(context);
       break;
-
     case "delete_error":
       runPython(["-c", `${header}; from src.database.queries import delete_error; delete_error(${Number(msg.id)})`])
-        .then(() => refreshDashboard(context))
-        .catch((e) => outputChannel.appendLine(`[Clarify] delete error: ${e.message}`));
+        .then(() => refreshDashboard(context));
       break;
-
     case "clear_all":
       runPython(["-c", `${header}; from src.database.queries import clear_all_errors; clear_all_errors()`])
-        .then(() => refreshDashboard(context))
-        .catch((e) => outputChannel.appendLine(`[Clarify] clear error: ${e.message}`));
+        .then(() => refreshDashboard(context));
       break;
-
     case "open_file":
       if (msg.file && msg.line) {
-        const uri = vscode.Uri.file(msg.file);
-        vscode.window.showTextDocument(uri).then((editor) => {
+        vscode.window.showTextDocument(vscode.Uri.file(msg.file)).then((editor) => {
           const pos = new vscode.Position(Math.max(0, msg.line - 1), 0);
           editor.selection = new vscode.Selection(pos, pos);
           editor.revealRange(new vscode.Range(pos, pos));
@@ -147,33 +142,30 @@ function handleMessage(msg, context) {
 
 // ── Commandes ────────────────────────────────────────────────────
 function clearErrors(context) {
-  const extPathEsc = EXT_PATH.replace(/\\/g, "\\\\");
+  const ep = EXT_PATH.replace(/\\/g, "\\\\");
   runPython(["-c",
-    `import sys; sys.path.insert(0, r'${extPathEsc}'); from src.database.queries import clear_all_errors; n=clear_all_errors(); print(n)`
+    `import sys; sys.path.insert(0, r'${ep}'); from src.database.queries import clear_all_errors; n=clear_all_errors(); print(n)`
   ])
     .then((out) => {
       vscode.window.showInformationMessage(`Clarify — ${out.trim()} erreur(s) supprimée(s).`);
       refreshDashboard(context);
     })
-    .catch((e) => outputChannel.appendLine(`[Clarify] clear error: ${e.message}`));
+    .catch((e) => outputChannel.appendLine(`[Clarify] clear: ${e.message}`));
 }
 
 async function pickLanguage(context) {
   const langs = [
-    { label: "Auto (système)", value: "auto" },
-    { label: "Français",       value: "fr"   },
-    { label: "English",        value: "en"   },
-    { label: "中文",            value: "zh"   },
-    { label: "العربية",        value: "ar"   },
-    { label: "Português",      value: "pt"   },
-    { label: "Español",        value: "es"   },
+    { label: "Auto",      value: "auto" },
+    { label: "Français",  value: "fr"   },
+    { label: "English",   value: "en"   },
+    { label: "中文",       value: "zh"   },
+    { label: "العربية",   value: "ar"   },
+    { label: "Português", value: "pt"   },
+    { label: "Español",   value: "es"   },
   ];
-  const pick = await vscode.window.showQuickPick(langs, {
-    placeHolder: "Choisir la langue Clarify",
-  });
+  const pick = await vscode.window.showQuickPick(langs, { placeHolder: "Langue Clarify" });
   if (!pick) return;
-  const config = vscode.workspace.getConfiguration(EXT_ID);
-  await config.update("language", pick.value, vscode.ConfigurationTarget.Global);
+  await vscode.workspace.getConfiguration(EXT_ID).update("language", pick.value, vscode.ConfigurationTarget.Global);
   vscode.window.showInformationMessage(`Clarify — Langue : ${pick.label}`);
   refreshDashboard(context);
 }
@@ -184,56 +176,45 @@ function analyseCurrentFile(context) {
     vscode.window.showWarningMessage("Clarify — Ouvrez un fichier Python.");
     return;
   }
-  const filePath    = editor.document.uri.fsPath;
-  const extPathEsc  = EXT_PATH.replace(/\\/g, "\\\\");
+  const fp = editor.document.uri.fsPath.replace(/\\/g, "\\\\");
+  const ep = EXT_PATH.replace(/\\/g, "\\\\");
   const script = [
     `import sys`,
-    `sys.path.insert(0, r'${extPathEsc}')`,
+    `sys.path.insert(0, r'${ep}')`,
     `from src.engine.core import activate`,
     `activate()`,
-    `exec(open(r'${filePath.replace(/\\/g, "\\\\")}').read())`,
+    `exec(open(r'${fp}').read())`,
   ].join("; ");
 
   vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "Clarify — Analyse…" },
     () => runPython(["-c", script])
       .then(() => { refreshDashboard(context); vscode.window.showInformationMessage("Clarify — Terminé."); })
-      .catch((e) => outputChannel.appendLine(`[Clarify] analyse error: ${e.message}`))
+      .catch((e) => outputChannel.appendLine(`[Clarify] analyse: ${e.message}`))
   );
 }
 
-// ── Utilitaire Python ────────────────────────────────────────────
-/**
- * Exécute Python depuis EXT_PATH (toujours le dossier de l'extension).
- * @param {string[]} args
- * @returns {Promise<string>}
- */
-function detectPythonPath() {
-  const config = vscode.workspace.getConfiguration(EXT_ID);
-  const manual = config.get("pythonPath");
+// ── Python ───────────────────────────────────────────────────────
+function detectPython() {
+  const manual = vscode.workspace.getConfiguration(EXT_ID).get("pythonPath");
   if (manual) return manual;
-
-  // Essaie d'utiliser l'extension Python MS pour récupérer l'interpréteur actif
   try {
     const pyExt = vscode.extensions.getExtension("ms-python.python");
     if (pyExt?.isActive) {
-      const api = pyExt.exports;
-      const env = api?.environments?.getActiveEnvironmentPath?.();
+      const env = pyExt.exports?.environments?.getActiveEnvironmentPath?.();
       if (env?.path) return env.path;
     }
   } catch (_) { /* ignore */ }
-
   return process.platform === "win32" ? "python" : "python3";
 }
 
 function runPython(args) {
   return new Promise((resolve, reject) => {
-    const python = detectPythonPath();
-    const config = vscode.workspace.getConfiguration(EXT_ID);
-    const lang   = config.get("language") || "auto";
+    const python = detectPython();
+    const lang   = vscode.workspace.getConfiguration(EXT_ID).get("language") || "auto";
     const env    = { ...process.env, CLARIFY_LANG: lang === "auto" ? "" : lang, PYTHONIOENCODING: "utf-8" };
 
-    outputChannel.appendLine(`[Clarify] ${python} ${args[0] === "-c" ? "-c <script>" : args.join(" ")}`);
+    outputChannel.appendLine(`[Clarify] Exec: ${python}`);
 
     execFile(python, ["-X", "utf8", ...args], { cwd: EXT_PATH, env, timeout: 30000 }, (err, stdout, stderr) => {
       if (stderr) outputChannel.appendLine(`[Clarify][stderr] ${stderr.trim()}`);
@@ -243,28 +224,25 @@ function runPython(args) {
   });
 }
 
-// ── HTML helpers ─────────────────────────────────────────────────
+// ── HTML ─────────────────────────────────────────────────────────
 function loadingHtml() {
   return `<!DOCTYPE html><html><body style="background:#1e1e2e;color:#cdd6f4;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
     <div style="text-align:center">
-      <div style="font-size:32px;margin-bottom:12px">⬡</div>
-      <div style="color:#89b4fa;font-size:18px;font-weight:bold">Clarify</div>
-      <div style="color:#6c7086;margin-top:8px">Chargement du dashboard…</div>
-    </div>
-  </body></html>`;
+      <div style="font-size:32px">⬡</div>
+      <div style="color:#89b4fa;font-size:18px;font-weight:bold;margin-top:8px">Clarify</div>
+      <div style="color:#6c7086;margin-top:8px">Chargement…</div>
+    </div></body></html>`;
 }
 
-function errorHtml(message) {
-  const safe = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function errorHtml(msg) {
+  const safe = String(msg).replace(/</g,"&lt;").replace(/>/g,"&gt;");
   return `<!DOCTYPE html><html><body style="background:#1e1e2e;color:#cdd6f4;font-family:sans-serif;padding:32px;margin:0">
     <div style="color:#89b4fa;font-size:18px;font-weight:bold;margin-bottom:16px">⬡ Clarify</div>
     <div style="background:#2a2a3d;border:1px solid #f38ba8;border-radius:8px;padding:16px">
-      <div style="color:#f38ba8;font-weight:bold;margin-bottom:8px">Erreur de chargement</div>
+      <div style="color:#f38ba8;font-weight:bold;margin-bottom:8px">Erreur</div>
       <pre style="color:#cdd6f4;font-size:12px;white-space:pre-wrap;margin:0">${safe}</pre>
     </div>
-    <div style="color:#6c7086;margin-top:16px;font-size:12px">
-      Vérifiez l'onglet <strong>Clarify</strong> dans le panneau Output pour les détails.
-    </div>
+    <div style="color:#6c7086;margin-top:16px;font-size:12px">Voir Output &gt; Clarify pour les détails.</div>
   </body></html>`;
 }
 
