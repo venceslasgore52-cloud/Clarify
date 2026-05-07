@@ -277,7 +277,8 @@ function analyseCurrentFile(context) {
 
   // Affiche le terminal et lance le script
   clarifyTerminal.show(false);
-  clarifyTerminal.sendText(`"${python}" -X utf8 "${tmp}"`);
+  // PowerShell requiert '&' pour exécuter un chemin entre guillemets
+  clarifyTerminal.sendText(`& "${python}" -X utf8 "${tmp}"`);
 
   // Met à jour le dashboard 3s après (laisse Python le temps de finir)
   setTimeout(() => sendDashboardData(context), 3000);
