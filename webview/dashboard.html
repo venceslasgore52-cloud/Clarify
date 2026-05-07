@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <title>Clarify — Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+
+  <!-- ── En-tête ─────────────────────────────────────────────── -->
+  <header>
+    <div class="header-left">
+      <span class="logo">⬡ Clarify</span>
+      <span class="subtitle">Dashboard des erreurs</span>
+    </div>
+    <div class="header-right">
+      <span id="total-badge" class="badge">0 erreurs</span>
+      <button id="btn-refresh" class="btn btn-ghost">↻ Actualiser</button>
+      <button id="btn-clear"   class="btn btn-danger">✕ Tout effacer</button>
+    </div>
+  </header>
+
+  <!-- ── Stats ───────────────────────────────────────────────── -->
+  <section class="stats-grid">
+    <div class="stat-card" id="stat-total">
+      <div class="stat-value">—</div>
+      <div class="stat-label">Total erreurs</div>
+    </div>
+    <div class="stat-card" id="stat-top-type">
+      <div class="stat-value">—</div>
+      <div class="stat-label">Type le plus fréquent</div>
+    </div>
+    <div class="stat-card" id="stat-top-file">
+      <div class="stat-value">—</div>
+      <div class="stat-label">Fichier le plus touché</div>
+    </div>
+    <div class="stat-card" id="stat-today">
+      <div class="stat-value">—</div>
+      <div class="stat-label">Aujourd'hui</div>
+    </div>
+  </section>
+
+  <!-- ── Graphique par type ───────────────────────────────────── -->
+  <section class="section">
+    <h2 class="section-title">Répartition par type</h2>
+    <div id="chart-types" class="bar-chart"></div>
+  </section>
+
+  <!-- ── Liste des erreurs ───────────────────────────────────── -->
+  <section class="section">
+    <h2 class="section-title">Dernières erreurs</h2>
+    <div class="table-wrapper">
+      <table id="errors-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Message</th>
+            <th>Fichier</th>
+            <th>Ligne</th>
+            <th>Heure</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="errors-body">
+          <tr class="empty-row">
+            <td colspan="7">Aucune erreur enregistrée.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Panneau de détail ────────────────────────────────────── -->
+  <div id="detail-panel" class="detail-panel hidden">
+    <div class="detail-header">
+      <span id="detail-type" class="detail-type"></span>
+      <button id="detail-close" class="btn btn-ghost">✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-row">
+        <span class="detail-label">Message</span>
+        <span id="detail-message" class="detail-value mono"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Fichier</span>
+        <span id="detail-file" class="detail-value mono"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Ligne</span>
+        <span id="detail-line" class="detail-value"></span>
+      </div>
+      <hr />
+      <div class="detail-block">
+        <span class="detail-label">Explication</span>
+        <p id="detail-description"></p>
+      </div>
+      <div class="detail-block">
+        <span class="detail-label solution-label">Solution</span>
+        <pre id="detail-solution"></pre>
+      </div>
+      <div class="detail-block">
+        <span class="detail-label conseil-label">Conseil</span>
+        <p id="detail-conseil"></p>
+      </div>
+    </div>
+  </div>
+  <div id="overlay" class="overlay hidden"></div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show *)",
+      "PowerShell(cd \"v:\\\\Projets\\\\clarify\"; $dirs = @\\(\"src\",\"src/engine\",\"src/patterns\",\"src/patterns/python\",\"src/patterns/python/builtin\",\"src/patterns/python/django\",\"src/locale\",\"src/database\",\"src/reporter\"\\); foreach \\($d in $dirs\\) { New-Item -ItemType File -Path \"$d/__init__.py\" -Force | Out-Null }; Write-Host \"OK\")",
+      "PowerShell(cd \"v:\\\\Projets\\\\clarify\"; $env:CLARIFY_LANG=\"zh\"; python -X utf8 test_clarify.py 2>&1 | Select-Object -First 60)",
+      "PowerShell(cd \"v:\\\\Projets\\\\clarify\"; $env:CLARIFY_LANG=\"zh\"; python -X utf8 test_clarify.py 2>&1 | Select-Object -First 55)",
+      "PowerShell(cd \"v:\\\\Projets\\\\clarify\"; $env:CLARIFY_LANG=\"zh\"; python -X utf8 test_clarify.py 2>&1 | Select-Object -First 45)",
+      "PowerShell(cd \"v:\\\\Projets\\\\clarify\"; $env:CLARIFY_LANG=\"zh\"; python -X utf8 test_clarify.py 2>&1 | Select-String \"Langue|Explication|Source\" | Select-Object -First 5)",
+      "PowerShell(& \"C:\\\\Users\\\\WHITE-44\\\\AppData\\\\Local\\\\Programs\\\\Microsoft VS Code\\\\bin\\\\code.cmd\" --version 2>&1)",
+      "PowerShell(node -e \"const fs=require\\('node:fs'\\); const v=fs.readFileSync\\('C:/Users/WHITE-44/AppData/Local/Programs/Microsoft VS Code/resources/app/package.json','utf8'\\); console.log\\(JSON.parse\\(v\\).version\\)\")"
+    ]
+  }
+}

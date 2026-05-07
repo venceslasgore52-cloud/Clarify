@@ -1,0 +1,133 @@
+{
+  "name": "clarify",
+  "displayName": "Clarify",
+  "description": "Décode et explique les erreurs Python en langage naturel, directement dans VS Code.",
+  "version": "1.0.5",
+  "publisher": "venceslasgore52",
+  "author": {
+    "name": "Gore",
+    "renamed": "Malepoh Venceslas ",
+    "email": "venceslasgore52@gmail.com"
+  },
+  "license": "MIT",
+  "icon": "assets/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/venceslasgore52-cloud/Clarify"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Education",
+    "Other"
+  ],
+  "keywords": [
+    "python", "errors", "debug", "explainer", "django", "clarify"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "clarify.showDashboard",
+        "title": "Clarify: Ouvrir le dashboard",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "clarify.analyseFile",
+        "title": "Clarify: Analyser ce fichier",
+        "icon": "$(search)"
+      },
+      {
+        "command": "clarify.clearErrors",
+        "title": "Clarify: Effacer toutes les erreurs",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "clarify.setLanguage",
+        "title": "Clarify: Changer la langue"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "clarify.analyseFile",
+          "when": "resourceLangId == python",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "clarify.showDashboard",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Clarify",
+      "properties": {
+        "clarify.language": {
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "fr", "en", "zh", "ar", "pt", "es"],
+          "enumDescriptions": [
+            "Détection automatique (langue du système)",
+            "Français",
+            "English",
+            "中文",
+            "العربية",
+            "Português",
+            "Español"
+          ],
+          "description": "Langue d'affichage des explications Clarify."
+        },
+        "clarify.pythonPath": {
+          "type": "string",
+          "default": "",
+          "description": "Chemin vers l'interpréteur Python à utiliser (laissez vide pour la détection automatique)."
+        },
+        "clarify.autoActivate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Activer Clarify automatiquement à l'ouverture d'un fichier Python."
+        },
+        "clarify.showFlow": {
+          "type": "boolean",
+          "default": true,
+          "description": "Afficher le schéma de flux de l'erreur dans le dashboard."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "clarify-sidebar",
+          "title": "Clarify",
+          "icon": "assets/icon-sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "clarify-sidebar": [
+        {
+          "type": "webview",
+          "id": "clarify.dashboard",
+          "name": "Dashboard"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.0.0"
+  }
+}

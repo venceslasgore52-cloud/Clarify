@@ -1,0 +1,58 @@
+# ── Python ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+wheels/
+*.whl
+.eggs/
+
+# ── Environnements virtuels ────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# ── Base de données & logs Clarify ────────────────────────────────
+src/database/clarify.db
+src/database/errors_log.json
+src/database/clarify.log
+
+# ── Webview générée (preview standalone) ──────────────────────────
+webview/preview.html
+
+# ── Node / VS Code Extension ──────────────────────────────────────
+node_modules/
+*.vsix
+out/
+dist/
+.vscode-test/
+
+# ── VS Code (garder launch.json et settings.json) ─────────────────
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ── OS ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Tests & couverture ─────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# ── Secrets ────────────────────────────────────────────────────────
+.env
+.env.*
+secrets.py

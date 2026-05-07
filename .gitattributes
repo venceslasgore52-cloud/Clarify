@@ -1,0 +1,8 @@
+# Normalise les fins de ligne en LF dans le dépôt
+* text=auto eol=lf
+
+# Fichiers binaires — pas de conversion
+*.png  binary
+*.ico  binary
+*.vsix binary
+*.db   binary
