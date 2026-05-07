@@ -231,6 +231,7 @@ function analyseCurrentFile(context) {
   const fs  = require("node:fs");
   const tmp = path.join(os.tmpdir(), `clarify_run_${Date.now()}.py`);
 
+  const filename = path.basename(fp);
   const script = [
     `import sys`,
     `sys.path.insert(0, r'${EXT_PATH}')`,
@@ -238,17 +239,29 @@ function analyseCurrentFile(context) {
     `from src.engine.decoder import decode`,
     `from src.engine.terminal import render`,
     `from src.reporter.logger import log_error`,
+    `from src.reporter.visualizer import print_flow`,
     `from src.locale.detector import get_language`,
+    ``,
+    `CYAN  = "\\033[36m"`,
+    `BOLD  = "\\033[1m"`,
+    `DIM   = "\\033[2m"`,
+    `RESET = "\\033[0m"`,
+    ``,
+    `print(f"\\n{BOLD}{CYAN}── Clarify ─────────────────────────────────── ${r'${filename}'}{RESET}")`,
+    ``,
     `try:`,
     `    exec(open(r'${fp}').read())`,
+    `    print(f"\\n{DIM}Aucune erreur détectée.{RESET}\\n")`,
     `except Exception:`,
     `    exc_type, exc_val, exc_tb = sys.exc_info()`,
     `    langue  = get_language()`,
     `    info    = get_error_info(exc_type, exc_val, exc_tb)`,
     `    decoded = decode(info, langue)`,
+    `    decoded["langue"] = langue`,
     `    render(decoded)`,
+    `    print_flow(decoded)`,
     `    log_error(decoded, langue)`,
-  ].join("\n");
+  ].join("\n").replaceAll("${filename}", filename);
 
   fs.writeFileSync(tmp, script, "utf-8");
 
