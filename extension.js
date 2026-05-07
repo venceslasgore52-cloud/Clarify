@@ -43,6 +43,19 @@ function activate(context) {
   context.subscriptions.push(statusBar);
 
   outputChannel.appendLine("[Clarify] Commandes enregistrées. Cliquez sur ⬡ Clarify.");
+
+  // Notification avec bouton — ouvre le dashboard au clic
+  vscode.window.showInformationMessage(
+    "⬡ Clarify activée",
+    "Ouvrir le Dashboard"
+  ).then((choice) => {
+    if (choice === "Ouvrir le Dashboard") {
+      openDashboard(context);
+    }
+  });
+
+  // Ouvre le dashboard automatiquement après 500ms
+  setTimeout(() => openDashboard(context), 500);
 }
 
 // ── Dashboard ────────────────────────────────────────────────────
