@@ -111,7 +111,16 @@ function refreshDashboard(context) {
         outputChannel.appendLine(`[Clarify] Erreur Python:\n${detail}`);
         dashboardPanel.webview.html = errorHtml(detail);
       } else if (out.trim()) {
-        dashboardPanel.webview.html = out;
+        // Injecte un nonce dans la CSP et les balises <script> pour VS Code
+        const nonce = getNonce();
+        let html = out;
+        html = html.replace(
+          /<meta http-equiv="Content-Security-Policy"[^>]*>/,
+          `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">`
+        );
+        html = html.replace(/<script>/g, `<script nonce="${nonce}">`);
+        html = html.replace(/<script /g, `<script nonce="${nonce}" `);
+        dashboardPanel.webview.html = html;
       } else {
         dashboardPanel.webview.html = errorHtml("Sortie Python vide.");
       }
@@ -258,6 +267,12 @@ function runPythonScript(script) {
   return runPython([tmp]).finally(() => {
     try { fs.unlinkSync(tmp); } catch (_) {}
   });
+}
+
+// ── Utilitaires ──────────────────────────────────────────────────
+function getNonce() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  return Array.from({ length: 32 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
 // ── HTML ─────────────────────────────────────────────────────────
