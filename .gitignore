@@ -40,6 +40,7 @@ dist/
 !.vscode/launch.json
 !.vscode/settings.json
 !.vscode/extensions.json
+.claude
 
 # ── OS ─────────────────────────────────────────────────────────────
 .DS_Store
