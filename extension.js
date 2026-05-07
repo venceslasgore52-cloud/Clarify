@@ -247,7 +247,7 @@ function analyseCurrentFile(context) {
     `DIM   = "\\033[2m"`,
     `RESET = "\\033[0m"`,
     ``,
-    `print(f"\\n{BOLD}{CYAN}── Clarify ─────────────────────────────────── ${r'${filename}'}{RESET}")`,
+    `print(f"\\n{BOLD}{CYAN}── Clarify ─────────────────── ${filename} {RESET}")`,
     ``,
     `try:`,
     `    exec(open(r'${fp}').read())`,
@@ -261,7 +261,7 @@ function analyseCurrentFile(context) {
     `    render(decoded)`,
     `    print_flow(decoded)`,
     `    log_error(decoded, langue)`,
-  ].join("\n").replaceAll("${filename}", filename);
+  ].join("\n");
 
   fs.writeFileSync(tmp, script, "utf-8");
 
