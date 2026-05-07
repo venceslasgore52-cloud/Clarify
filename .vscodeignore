@@ -1,0 +1,32 @@
+# Fichiers exclus du paquet .vsix publié sur le Marketplace
+
+# Dev & test
+.vscode/**
+test/**
+test_clarify.py
+clarify_diag.py
+generate_preview.py
+show_flow.py
+**/*.test.js
+
+# Python — non inclus dans le .vsix (installé par l'utilisateur)
+src/**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# DB & logs générés à l'usage
+src/database/clarify.db
+src/database/clarify.log
+src/database/errors_log.json
+
+# Webview preview standalone
+webview/preview.html
+
+# Git & CI
+.gitignore
+.gitattributes
+.github/**
+.claude/**
+
+# Dépendances dev Node
+node_modules/**
