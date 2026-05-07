@@ -75,27 +75,37 @@ function openDashboard(context) {
 function refreshDashboard(context) {
   if (!dashboardPanel) return;
 
-  // EXT_PATH est passé directement au script Python — aucune ambiguïté de CWD
+  const ep     = EXT_PATH.replace(/\\/g, "\\\\");
   const script = [
-    `import sys`,
-    `sys.path.insert(0, r'${EXT_PATH.replace(/\\/g, "\\\\")}')`,
-    `from src.reporter.dashboard import get_webview_html`,
-    `print(get_webview_html(), end='')`,
-  ].join("; ");
+    `import sys, traceback`,
+    `sys.path.insert(0, r'${ep}')`,
+    `try:`,
+    `  from src.reporter.dashboard import get_webview_html`,
+    `  html = get_webview_html()`,
+    `  print(html, end='')`,
+    `except Exception as e:`,
+    `  print('CLARIFY_ERROR:' + traceback.format_exc(), end='')`,
+  ].join("\n");
 
   runPython(["-c", script])
-    .then((html) => {
-      if (dashboardPanel && html.trim()) {
-        dashboardPanel.webview.html = html;
-      } else if (dashboardPanel) {
-        dashboardPanel.webview.html = errorHtml("Dashboard vide — aucune erreur enregistrée.");
+    .then((out) => {
+      if (!dashboardPanel) return;
+      if (out.startsWith("CLARIFY_ERROR:")) {
+        const detail = out.replace("CLARIFY_ERROR:", "").trim();
+        outputChannel.appendLine(`[Clarify] Python error:\n${detail}`);
+        outputChannel.show(true);
+        dashboardPanel.webview.html = errorHtml(detail);
+      } else if (out.trim()) {
+        dashboardPanel.webview.html = out;
+      } else {
+        dashboardPanel.webview.html = errorHtml("Python n'a rien retourné.\nVérifiez l'onglet Output > Clarify.");
       }
     })
     .catch((err) => {
-      outputChannel.appendLine(`[Clarify] Dashboard error: ${err.message}`);
-      if (dashboardPanel) {
-        dashboardPanel.webview.html = errorHtml(err.message);
-      }
+      const msg = err.message || String(err);
+      outputChannel.appendLine(`[Clarify] execFile error: ${msg}`);
+      outputChannel.show(true);
+      if (dashboardPanel) dashboardPanel.webview.html = errorHtml(msg);
     });
 }
 
@@ -198,18 +208,36 @@ function analyseCurrentFile(context) {
  * @param {string[]} args
  * @returns {Promise<string>}
  */
+function detectPythonPath() {
+  const config = vscode.workspace.getConfiguration(EXT_ID);
+  const manual = config.get("pythonPath");
+  if (manual) return manual;
+
+  // Essaie d'utiliser l'extension Python MS pour récupérer l'interpréteur actif
+  try {
+    const pyExt = vscode.extensions.getExtension("ms-python.python");
+    if (pyExt?.isActive) {
+      const api = pyExt.exports;
+      const env = api?.environments?.getActiveEnvironmentPath?.();
+      if (env?.path) return env.path;
+    }
+  } catch (_) { /* ignore */ }
+
+  return process.platform === "win32" ? "python" : "python3";
+}
+
 function runPython(args) {
   return new Promise((resolve, reject) => {
-    const config     = vscode.workspace.getConfiguration(EXT_ID);
-    const python     = config.get("pythonPath") || (process.platform === "win32" ? "python" : "python3");
-    const lang       = config.get("language") || "auto";
-    const env        = { ...process.env, CLARIFY_LANG: lang === "auto" ? "" : lang };
+    const python = detectPythonPath();
+    const config = vscode.workspace.getConfiguration(EXT_ID);
+    const lang   = config.get("language") || "auto";
+    const env    = { ...process.env, CLARIFY_LANG: lang === "auto" ? "" : lang, PYTHONIOENCODING: "utf-8" };
 
-    outputChannel.appendLine(`[Clarify] python ${args[0] === "-c" ? "-c <script>" : args.join(" ")}`);
+    outputChannel.appendLine(`[Clarify] ${python} ${args[0] === "-c" ? "-c <script>" : args.join(" ")}`);
 
-    execFile(python, ["-X", "utf8", ...args], { cwd: EXT_PATH, env }, (err, stdout, stderr) => {
+    execFile(python, ["-X", "utf8", ...args], { cwd: EXT_PATH, env, timeout: 30000 }, (err, stdout, stderr) => {
       if (stderr) outputChannel.appendLine(`[Clarify][stderr] ${stderr.trim()}`);
-      if (err)    reject(err);
+      if (err)    reject(new Error(`${err.message}\n${stderr || ""}`));
       else        resolve(stdout);
     });
   });
