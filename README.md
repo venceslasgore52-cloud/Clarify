@@ -1,121 +1,220 @@
-# Clarify
+# ⬡ Clarify
 
-Extension VS Code qui décode et traduit les patterns de code Python — dont Django — en explications claires et lisibles, avec un tableau de bord en temps réel pour l'analyse et le reporting.
+> Extension VS Code qui intercepte les erreurs Python, les décode et les explique en langage naturel — avec support Django, multilingue et tableau de bord en temps réel.
 
-## Architecture
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.80%2B-blue)
+![License](https://img.shields.io/badge/licence-MIT-green)
+![Version](https://img.shields.io/badge/version-1.0.5-orange)
+
+---
+
+## ✨ Ce que fait Clarify
+
+Au lieu de ce message brut :
+
+```
+TypeError: unsupported operand type(s) for +: 'int' and 'str'
+```
+
+Clarify affiche :
+
+```
+┌ Clarify — Erreur détectée ──────────────────────────────────────────────┐
+│ Type        │ TypeError                                                  │
+│ Message     │ unsupported operand type(s) for +: 'int' and 'str'        │
+│ Fichier     │ app.py  │  Ligne  │ 12                                     │
+├─────────────┼──────────────────────────────────────────────────────────-┤
+│ Explication │ L'opération '+' ne peut pas s'appliquer entre int et str.  │
+│ Solution    │ Convertis : int(valeur) ou str(valeur) selon ton besoin.   │
+│ Conseil     │ Python ne mélange pas les types. 5 + '3' → erreur,        │
+│             │ mais 5 + int('3') → 8.                                     │
+└─────────────┴────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Démarrage rapide
+
+### 1. Prérequis
+
+- Python 3.10+
+- Node.js 18+
+- VS Code 1.80+
+
+### 2. Installation
+
+```bash
+git clone https://github.com/venceslasgore52-cloud/Clarify.git
+cd Clarify
+npm install
+pip install deep-translator terminaltables
+```
+
+### 3. Lancer l'extension VS Code
+
+```
+F5  →  ouvre l'Extension Development Host
+```
+
+### 4. Utiliser Clarify dans un script Python
+
+```python
+from src.engine.core import activate
+activate()   # une seule ligne — Clarify intercepte toutes les erreurs
+
+# ton code ici...
+```
+
+### 5. Forcer la langue
+
+```bash
+# PowerShell
+$env:CLARIFY_LANG="fr"   # fr | en | zh | ar | pt | es
+
+# Linux / Mac
+export CLARIFY_LANG=fr
+```
+
+---
+
+## 🧪 Simulation de test
+
+```bash
+python -X utf8 test_clarify.py
+```
+
+Lance 10 erreurs Python réelles et affiche le tableau Clarify pour chacune.
+
+---
+
+## 🗂️ Architecture
 
 ```
 clarify/
-├── extension.js                    # Point d'entrée de l'extension VS Code
-├── package.json                    # Manifeste & dépendances
+├── extension.js                         # Extension VS Code (point d'entrée)
+├── package.json                         # Manifeste & configuration
 │
 ├── src/
-│   ├── engine/                     # Moteur d'analyse principal
-│   │   ├── core.py                 # Orchestre le pipeline d'analyse
-│   │   ├── decoder.py              # Lecture et parsing des fichiers source
-│   │   ├── translator.py           # Conversion des patterns en explications
-│   │   └── terminal.py             # Sortie terminal & commandes
+│   ├── engine/
+│   │   ├── core.py                      # Pipeline principal (sys.excepthook)
+│   │   ├── decoder.py                   # Correspondance regex → pattern
+│   │   ├── translator.py                # Traduction via deep-translator
+│   │   └── terminal.py                  # Affichage tableau coloré
 │   │
 │   ├── patterns/python/
-│   │   ├── builtin/                # Patterns Python standard
-│   │   │   ├── syntax.py
-│   │   │   ├── variables.py
-│   │   │   ├── types.py
-│   │   │   ├── collections.py
-│   │   │   ├── imports.py
-│   │   │   ├── files.py
-│   │   │   ├── runtime.py
-│   │   │   └── system.py
-│   │   └── django/                 # Patterns spécifiques à Django
-│   │       ├── orm.py
-│   │       ├── views.py
-│   │       ├── urls.py
-│   │       ├── templates.py
-│   │       └── config.py
+│   │   ├── builtin/                     # Erreurs Python standard
+│   │   │   ├── variables.py             # NameError, UnboundLocalError, AttributeError
+│   │   │   ├── types.py                 # TypeError
+│   │   │   ├── collections.py           # IndexError, KeyError
+│   │   │   ├── syntax.py                # SyntaxError, IndentationError, TabError
+│   │   │   ├── imports.py               # ImportError, ModuleNotFoundError
+│   │   │   ├── files.py                 # FileNotFoundError, PermissionError…
+│   │   │   ├── runtime.py               # ZeroDivisionError, RecursionError…
+│   │   │   └── system.py                # SystemExit, KeyboardInterrupt…
+│   │   │
+│   │   └── django/                      # Erreurs Django / DRF
+│   │       ├── orm.py                   # DoesNotExist, IntegrityError…
+│   │       ├── views.py                 # Http404, PermissionDenied…
+│   │       ├── urls.py                  # NoReverseMatch, Resolver404…
+│   │       ├── templates.py             # TemplateDoesNotExist…
+│   │       ├── config.py                # ImproperlyConfigured, DisallowedHost…
+│   │       ├── serializers.py           # ValidationError DRF…
+│   │       ├── middleware.py            # CSRF, SessionMiddleware…
+│   │       ├── celery.py                # Broker, NotRegistered…
+│   │       └── redis.py                 # ConnectionError, TimeoutError…
 │   │
 │   ├── locale/
-│   │   └── detector.py             # Détecte la langue de l'utilisateur
+│   │   └── detector.py                  # Détection langue (env → OS → défaut)
 │   │
 │   ├── database/
-│   │   ├── db.py                   # Connexion à la base de données
-│   │   ├── models.py               # Modèles de données
-│   │   └── queries.py              # Helpers de requêtes
+│   │   ├── db.py                        # SQLite (intégré Python, zéro config)
+│   │   ├── models.py                    # ErrorRecord dataclass
+│   │   └── queries.py                   # CRUD + statistiques
 │   │
 │   └── reporter/
-│       ├── logger.py               # Journalisation des événements et erreurs
-│       ├── dashboard.py            # Fournisseur de données du tableau de bord
-│       └── visualizer.py          # Génération de graphiques
+│       ├── logger.py                    # DB + fichier .log horodaté
+│       ├── dashboard.py                 # Génère le HTML du webview
+│       └── visualizer.py               # Schéma ASCII du flux d'erreur
 │
 └── webview/
-    ├── dashboard.html              # Interface du tableau de bord
-    ├── dashboard.css               # Styles
-    └── dashboard.js                # Logique webview & pont avec l'API VS Code
+    ├── dashboard.html                   # Interface tableau de bord
+    ├── dashboard.css                    # Thème sombre (Catppuccin)
+    └── dashboard.js                     # Logique + pont VS Code API
 ```
 
-## Fonctionnement
+---
 
-1. **Décodage** — `decoder.py` analyse un fichier Python et en extrait les constructions significatives.
-2. **Correspondance** — `core.py` associe ces constructions aux bibliothèques de patterns (`builtin/`, `django/`).
-3. **Traduction** — `translator.py` génère des explications en langage naturel, selon la langue détectée.
-4. **Rapport** — les résultats sont journalisés, stockés et affichés dans le tableau de bord webview de VS Code.
+## ⚙️ Fonctionnement
 
-## Démarrage
-
-```bash
-npm install
 ```
-
-Appuyez sur `F5` dans VS Code pour lancer l'hôte de développement d'extension.
-
-## Prérequis
-
-- VS Code 1.80+
-- Python 3.10+
-- Node.js 18+
+Exception Python
+      │
+      ▼  sys.excepthook
+ core.handle_exception()
+      │
+      ├─► get_error_info()      extrait : type, message, fichier, ligne
+      │
+      ├─► decoder.decode()      cherche la regex correspondante dans les patterns
+      │         │
+      │         └─► translator.translate()   traduit si langue ≠ français
+      │
+      ├─► terminal.render()     affiche le tableau coloré
+      │
+      └─► reporter.logger.log_error()
+                │
+                ├─► SQLite (clarify.db)
+                ├─► clarify.log
+                └─► dashboard webview
+```
 
 ---
 
 ## 🌍 Langues supportées
 
-| Code | Langue     |
-|------|------------|
-| fr   | Français   |
-| en   | English    |
-| zh   | 中文        |
-| ar   | العربية     |
-| pt   | Português  |
-| es   | Español    |
+| Code | Langue    |
+|------|-----------|
+| `fr` | Français  |
+| `en` | English   |
+| `zh` | 中文       |
+| `ar` | العربية    |
+| `pt` | Português |
+| `es` | Español   |
+
+La langue source des patterns est le **français** (`SOURCE_LANGUAGE = "fr"` dans `detector.py`).
+Changer cette constante suffit si les patterns sont réécrits dans une autre langue.
 
 ---
 
 ## 🗺️ Roadmap
 
-| Version | Contenu                    | Statut |
-|---------|----------------------------|--------|
-| V1.0.5  | Python builtin + Django    | 🔄 En cours |
-| V1.1.0  | Flask + FastAPI            | 🔒 Prévu |
-| V1.2.0  | JavaScript + React         | 🔒 Prévu |
-| V2.0.0  | Flutter + Dart             | 🔒 Prévu |
-| V3.0.0  | Multi-langages complet     | 🔒 Prévu |
+| Version | Contenu                 | Statut      |
+|---------|-------------------------|-------------|
+| V1.0.5  | Python builtin + Django | 🔄 En cours |
+| V1.1.0  | Flask + FastAPI         | 🔒 Prévu    |
+| V1.2.0  | JavaScript + React      | 🔒 Prévu    |
+| V2.0.0  | Flutter + Dart          | 🔒 Prévu    |
+| V3.0.0  | Multi-langages complet  | 🔒 Prévu    |
 
 ---
 
 ## 🤝 Contribuer
 
-Tu peux contribuer en :
-- Ajoutant des patterns d'erreurs
-- Traduisant dans ta langue
-- Signalant des erreurs manquantes
+- Ajouter des patterns dans `src/patterns/python/`
+- Traduire les patterns dans une nouvelle langue
+- Signaler une erreur non couverte en ouvrant une issue
 
 ---
 
 ## 📄 Licence
 
-MIT License — Libre et gratuit
+MIT License — Libre et gratuit pour toujours.
 
 ---
 
 ## 👨🏾‍💻 Auteur
 
-Venceslas — DIGIX Technology
+**Venceslas Malepoh** — DIGIX Technology
 Abidjan, Côte d'Ivoire 🇨🇮
+
+[GitHub](https://github.com/venceslasgore52-cloud/Clarify)
