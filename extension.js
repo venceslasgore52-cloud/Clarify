@@ -79,18 +79,17 @@ function refreshDashboard(context) {
   if (!dashboardPanel) return;
   outputChannel.appendLine("[Clarify] refreshDashboard() — lancement Python...");
 
-  const ep     = EXT_PATH.replace(/\\/g, "\\\\");
   const script = [
     `import sys, traceback`,
-    `sys.path.insert(0, r'${ep}')`,
+    `sys.path.insert(0, r'${EXT_PATH}')`,
     `try:`,
-    `  from src.reporter.dashboard import get_webview_html`,
-    `  print(get_webview_html(), end='')`,
+    `    from src.reporter.dashboard import get_webview_html`,
+    `    print(get_webview_html(), end='')`,
     `except Exception:`,
-    `  print('CLARIFY_ERROR:' + traceback.format_exc(), end='')`,
+    `    print('CLARIFY_ERROR:' + traceback.format_exc(), end='')`,
   ].join("\n");
 
-  runPython(["-c", script])
+  runPythonScript(script)
     .then((out) => {
       if (!dashboardPanel) return;
       outputChannel.appendLine(`[Clarify] Python répondu — ${out.length} caractères`);
@@ -121,11 +120,11 @@ function handleMessage(msg, context) {
       refreshDashboard(context);
       break;
     case "delete_error":
-      runPython(["-c", `${header}; from src.database.queries import delete_error; delete_error(${Number(msg.id)})`])
+      runPythonScript(`import sys\nsys.path.insert(0, r'${EXT_PATH}')\nfrom src.database.queries import delete_error\ndelete_error(${Number(msg.id)})`)
         .then(() => refreshDashboard(context));
       break;
     case "clear_all":
-      runPython(["-c", `${header}; from src.database.queries import clear_all_errors; clear_all_errors()`])
+      runPythonScript(`import sys\nsys.path.insert(0, r'${EXT_PATH}')\nfrom src.database.queries import clear_all_errors\nclear_all_errors()`)
         .then(() => refreshDashboard(context));
       break;
     case "open_file":
@@ -142,10 +141,9 @@ function handleMessage(msg, context) {
 
 // ── Commandes ────────────────────────────────────────────────────
 function clearErrors(context) {
-  const ep = EXT_PATH.replace(/\\/g, "\\\\");
-  runPython(["-c",
-    `import sys; sys.path.insert(0, r'${ep}'); from src.database.queries import clear_all_errors; n=clear_all_errors(); print(n)`
-  ])
+  runPythonScript(
+    `import sys\nsys.path.insert(0, r'${EXT_PATH}')\nfrom src.database.queries import clear_all_errors\nn=clear_all_errors()\nprint(n)`
+  )
     .then((out) => {
       vscode.window.showInformationMessage(`Clarify — ${out.trim()} erreur(s) supprimée(s).`);
       refreshDashboard(context);
@@ -176,21 +174,20 @@ function analyseCurrentFile(context) {
     vscode.window.showWarningMessage("Clarify — Ouvrez un fichier Python.");
     return;
   }
-  const fp = editor.document.uri.fsPath.replace(/\\/g, "\\\\");
-  const ep = EXT_PATH.replace(/\\/g, "\\\\");
+  const fp     = editor.document.uri.fsPath;
   const script = [
     `import sys`,
-    `sys.path.insert(0, r'${ep}')`,
+    `sys.path.insert(0, r'${EXT_PATH}')`,
     `from src.engine.core import activate`,
     `activate()`,
     `exec(open(r'${fp}').read())`,
-  ].join("; ");
+  ].join("\n");
 
   vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "Clarify — Analyse…" },
-    () => runPython(["-c", script])
+    () => runPythonScript(script)
       .then(() => { refreshDashboard(context); vscode.window.showInformationMessage("Clarify — Terminé."); })
-      .catch((e) => outputChannel.appendLine(`[Clarify] analyse: ${e.message}`))
+      .catch((e) => { outputChannel.appendLine(`[Clarify] analyse: ${e.message}`); outputChannel.show(true); })
   );
 }
 
@@ -218,9 +215,23 @@ function runPython(args) {
 
     execFile(python, ["-X", "utf8", ...args], { cwd: EXT_PATH, env, timeout: 30000 }, (err, stdout, stderr) => {
       if (stderr) outputChannel.appendLine(`[Clarify][stderr] ${stderr.trim()}`);
-      if (err)    reject(new Error(`${err.message}\n${stderr || ""}`));
+      if (err)    reject(new Error(stderr || err.message));
       else        resolve(stdout);
     });
+  });
+}
+
+/**
+ * Écrit le script dans un fichier .py temporaire et l'exécute.
+ * Évite tous les problèmes d'échappement sur Windows.
+ */
+function runPythonScript(script) {
+  const os   = require("node:os");
+  const fs   = require("node:fs");
+  const tmp  = path.join(os.tmpdir(), `clarify_${Date.now()}.py`);
+  fs.writeFileSync(tmp, script, "utf-8");
+  return runPython([tmp]).finally(() => {
+    try { fs.unlinkSync(tmp); } catch (_) {}
   });
 }
 
