@@ -193,7 +193,6 @@ $("btn-clear").addEventListener("click", clearAll);
 $("detail-close").addEventListener("click", closeDetail);
 $("overlay").addEventListener("click", closeDetail);
 
-// Demande les données à l'extension au chargement
-postMessage("ready");
-// Ou charge les données standalone si disponibles
+// Les données sont déjà dans window.CLARIFY_DATA (injectées par le backend).
+// On ne demande pas de refresh au chargement pour éviter la boucle infinie.
 loadStandaloneData();

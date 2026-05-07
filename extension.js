@@ -131,15 +131,37 @@ function refreshDashboard(context) {
     });
 }
 
+/**
+ * Envoie uniquement les données (stats + erreurs) au webview via postMessage.
+ * Plus rapide que recharger tout le HTML — utilisé pour les rafraîchissements.
+ */
+function sendDashboardData(context) {
+  if (!dashboardPanel) return;
+  const script = [
+    `import sys, json`,
+    `sys.path.insert(0, r'${EXT_PATH}')`,
+    `from src.database.queries import get_all_errors, get_stats`,
+    `stats  = get_stats()`,
+    `errors = [e.to_dict() for e in get_all_errors()]`,
+    `print(json.dumps({'stats': stats, 'errors': errors}, ensure_ascii=False), end='')`,
+  ].join("\n");
+
+  runPythonScript(script).then((out) => {
+    if (!dashboardPanel || !out.trim()) return;
+    try {
+      const data = JSON.parse(out);
+      dashboardPanel.webview.postMessage({ type: "update", ...data });
+    } catch (parseErr) {
+      outputChannel.appendLine(`[Clarify] JSON parse error: ${parseErr.message}`);
+    }
+  });
+}
+
 // ── Messages du webview ──────────────────────────────────────────
 function handleMessage(msg, context) {
-  const ep     = EXT_PATH.replace(/\\/g, "\\\\");
-  const header = `import sys; sys.path.insert(0, r'${ep}')`;
-
   switch (msg.type) {
-    case "ready":
     case "refresh":
-      refreshDashboard(context);
+      sendDashboardData(context);
       break;
     case "delete_error":
       runPythonScript(`import sys\nsys.path.insert(0, r'${EXT_PATH}')\nfrom src.database.queries import delete_error\ndelete_error(${Number(msg.id)})`)
@@ -220,7 +242,7 @@ function analyseCurrentFile(context) {
   vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "Clarify — Analyse…" },
     () => runPythonScript(script)
-      .then(() => { refreshDashboard(context); vscode.window.showInformationMessage("Clarify — Terminé."); })
+      .then(() => { sendDashboardData(context); vscode.window.showInformationMessage("Clarify — Terminé."); })
       .catch((e) => { outputChannel.appendLine(`[Clarify] analyse: ${e.message}`); outputChannel.show(true); })
   );
 }
@@ -235,7 +257,9 @@ function detectPython() {
       const env = pyExt.exports?.environments?.getActiveEnvironmentPath?.();
       if (env?.path) return env.path;
     }
-  } catch (_) { /* ignore */ }
+  } catch (pyExtErr) {
+    outputChannel?.appendLine(`[Clarify] Python detect: ${pyExtErr.message}`);
+  }
   return process.platform === "win32" ? "python" : "python3";
 }
 
@@ -265,7 +289,9 @@ function runPythonScript(script) {
   const tmp  = path.join(os.tmpdir(), `clarify_${Date.now()}.py`);
   fs.writeFileSync(tmp, script, "utf-8");
   return runPython([tmp]).finally(() => {
-    try { fs.unlinkSync(tmp); } catch (_) {}
+    try { fs.unlinkSync(tmp); } catch (unlinkErr) {
+      outputChannel?.appendLine(`[Clarify] cleanup: ${unlinkErr.message}`);
+    }
   });
 }
 
@@ -286,7 +312,7 @@ function loadingHtml() {
 }
 
 function errorHtml(msg) {
-  const safe = String(msg).replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const safe = String(msg).replaceAll("<","&lt;").replaceAll(">","&gt;");
   return `<!DOCTYPE html><html><body style="background:#1e1e2e;color:#cdd6f4;font-family:sans-serif;padding:32px;margin:0">
     <div style="color:#89b4fa;font-size:18px;font-weight:bold;margin-bottom:16px">⬡ Clarify</div>
     <div style="background:#2a2a3d;border:1px solid #f38ba8;border-radius:8px;padding:16px">
