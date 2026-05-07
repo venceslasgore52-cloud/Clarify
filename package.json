@@ -92,8 +92,8 @@
         },
         "clarify.autoActivate": {
           "type": "boolean",
-          "default": true,
-          "description": "Activer Clarify automatiquement à l'ouverture d'un fichier Python."
+          "default": false,
+          "description": "Ouvrir le dashboard automatiquement à l'ouverture d'un fichier Python."
         },
         "clarify.showFlow": {
           "type": "boolean",

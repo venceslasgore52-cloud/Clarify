@@ -30,10 +30,16 @@ function activate(context) {
     vscode.commands.registerCommand(LANG_CMD,      () => pickLanguage(context))
   );
 
-  const config = vscode.workspace.getConfiguration(EXT_ID);
-  if (config.get("autoActivate")) {
-    openDashboard(context);
-  }
+  // Bouton dans la barre de statut pour ouvrir le dashboard rapidement
+  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.text    = "⬡ Clarify";
+  statusBar.tooltip = "Ouvrir le dashboard Clarify";
+  statusBar.command = DASHBOARD_CMD;
+  statusBar.show();
+  context.subscriptions.push(statusBar);
+
+  // activate() se termine immédiatement — Python ne se lance qu'à la demande
+  outputChannel.appendLine("[Clarify] Prête — clique sur ⬡ Clarify ou Ctrl+Shift+P");
 }
 
 // ── Dashboard ────────────────────────────────────────────────────
