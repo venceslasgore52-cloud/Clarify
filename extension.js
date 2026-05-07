@@ -212,14 +212,25 @@ async function pickLanguage(context) {
   refreshDashboard(context);
 }
 
+/** @type {vscode.Terminal | undefined} */
+let clarifyTerminal;
+
 function analyseCurrentFile(context) {
   const editor = vscode.window.activeTextEditor;
   if (editor?.document.languageId !== "python") {
     vscode.window.showWarningMessage("Clarify — Ouvrez un fichier Python.");
     return;
   }
+
   const fp     = editor.document.uri.fsPath;
-  // Wrapper try/except : Clarify traite l'erreur, le script sort proprement avec code 0
+  const python = detectPython();
+  const lang   = vscode.workspace.getConfiguration(EXT_ID).get("language") || "auto";
+
+  // Écrit le script dans un fichier temporaire
+  const os  = require("node:os");
+  const fs  = require("node:fs");
+  const tmp = path.join(os.tmpdir(), `clarify_run_${Date.now()}.py`);
+
   const script = [
     `import sys`,
     `sys.path.insert(0, r'${EXT_PATH}')`,
@@ -239,12 +250,24 @@ function analyseCurrentFile(context) {
     `    log_error(decoded, langue)`,
   ].join("\n");
 
-  vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: "Clarify — Analyse…" },
-    () => runPythonScript(script)
-      .then(() => { sendDashboardData(context); vscode.window.showInformationMessage("Clarify — Terminé."); })
-      .catch((e) => { outputChannel.appendLine(`[Clarify] analyse: ${e.message}`); outputChannel.show(true); })
-  );
+  fs.writeFileSync(tmp, script, "utf-8");
+
+  // Ouvre (ou réutilise) un terminal dédié Clarify
+  if (!clarifyTerminal || clarifyTerminal.exitStatus !== undefined) {
+    clarifyTerminal = vscode.window.createTerminal({
+      name: "⬡ Clarify",
+      cwd:  EXT_PATH,
+      env:  { CLARIFY_LANG: lang === "auto" ? "" : lang, PYTHONIOENCODING: "utf-8" },
+    });
+    context.subscriptions.push({ dispose: () => clarifyTerminal?.dispose() });
+  }
+
+  // Affiche le terminal et lance le script
+  clarifyTerminal.show(false);
+  clarifyTerminal.sendText(`"${python}" -X utf8 "${tmp}"`);
+
+  // Met à jour le dashboard 3s après (laisse Python le temps de finir)
+  setTimeout(() => sendDashboardData(context), 3000);
 }
 
 // ── Python ───────────────────────────────────────────────────────
