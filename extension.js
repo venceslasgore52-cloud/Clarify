@@ -175,12 +175,24 @@ function analyseCurrentFile(context) {
     return;
   }
   const fp     = editor.document.uri.fsPath;
+  // Wrapper try/except : Clarify traite l'erreur, le script sort proprement avec code 0
   const script = [
     `import sys`,
     `sys.path.insert(0, r'${EXT_PATH}')`,
-    `from src.engine.core import activate`,
-    `activate()`,
-    `exec(open(r'${fp}').read())`,
+    `from src.engine.core import get_error_info`,
+    `from src.engine.decoder import decode`,
+    `from src.engine.terminal import render`,
+    `from src.reporter.logger import log_error`,
+    `from src.locale.detector import get_language`,
+    `try:`,
+    `    exec(open(r'${fp}').read())`,
+    `except Exception:`,
+    `    exc_type, exc_val, exc_tb = sys.exc_info()`,
+    `    langue  = get_language()`,
+    `    info    = get_error_info(exc_type, exc_val, exc_tb)`,
+    `    decoded = decode(info, langue)`,
+    `    render(decoded)`,
+    `    log_error(decoded, langue)`,
   ].join("\n");
 
   vscode.window.withProgress(
